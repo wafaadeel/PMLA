@@ -1,0 +1,131 @@
+---
+title: "PML Final Assignment"
+author: "Wafa Adeel"
+date: "December 10, 2017"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+
+### Loading requisite packages
+We load the required packages. 
+```{r packages, message=FALSE, warning=FALSE}
+library(caret)
+library(randomForest)
+library(rpart)
+library(rattle)
+```
+
+### Loading Dataset
+
+We first download the data from the link mentioned below, if the file already exists on system just read the train and test data files.
+
+```{r load}
+train.url="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test.url="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+f.train="training.csv"
+f.test="testing.csv"
+if(!file.exists(f.train))
+{
+  download.file(train.url, f.train)
+}
+train<-read.csv(f.train)
+if(!file.exists(f.test))
+{
+  download.file(test.url, f.test)
+}
+test<-read.csv(f.test)
+```
+
+### Splitting Dataset
+
+Here we split our original training frame (60-40) into a training and a testing set labelled "my_test". We set a seed to keep our work repeatable.
+
+```{r splitting}
+set.seed(111)
+ind=createDataPartition(train$classe, p=0.6, list=F)
+my_test=train[-ind,]
+train=train[ind,]
+```
+
+### Preparing Dataset
+We prepare all three: train, test, and my_test datasets together. First the identifier and info columns that are not used for predictions are removed. Then we check for predictors that have near zero variance and remove them. Then we remove predictors that have more than 50% NA entries. Finally we set the training parameters, we apply cross validation and principal component analysis.
+
+```{r prep}
+train=train[,-(1:7)]
+my_test=my_test[,-(1:7)]
+test=test[,-(1:7)]
+
+nzv=nearZeroVar(train)
+train=train[,-nzv]
+my_test=my_test[,-nzv]
+test=test[,-nzv]
+
+narate=function(x){
+  l=sapply(x, is.na)*1
+  return(sum(l)*100/length(x))
+}
+
+grid=apply(train, 2, narate)
+highna=which(grid>50)
+train=train[,-highna]
+grid=apply(my_test, 2, narate)
+highna=which(grid>50)
+my_test=my_test[,-highna]
+grid=apply(test, 2, narate)
+highna=which(grid>50)
+test=test[,-highna]
+
+tc=trainControl(method="cv", number=3, preProc="pca", verbose=F)
+
+```
+
+### Training
+
+#### Random Forest
+We use random forest training and prediction and check its accuracy by drawing up a confusion matrix.
+
+```{r train random forest}
+rf=randomForest(classe~., data=train[,-54])
+my_testp=predict(rf, newdata=my_test)
+confusionMatrix(my_test$classe, my_testp)
+```
+
+#### RPart
+We now use rpart to train the same dataset and check its accuracy by drawing up a confusion matrix. We also print a decision tree using rattle.
+```{r train rpart}
+dec=rpart(classe~., data=train, method="class")
+#fancyRpartPlot(dec)
+my_testpp= predict(dec, newdata = my_test, type="class")
+confusionMatrix(my_test$classe, my_testpp)
+```
+#### Training Conclusion
+Since the accuracy of random forest model was better, we use it to predict our test dataset.
+
+### Testing
+As the test dataset is already prepared we simply use predict and print out the values.
+```{r test}
+test_p=predict(rf, newdata = test)
+test_p
+```
+These values above are the predictions for the test dataset using random forest.
