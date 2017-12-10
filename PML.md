@@ -152,7 +152,16 @@ We now use rpart to train the same dataset and check its accuracy by drawing up 
 
 ```r
 dec=rpart(classe~., data=train, method="class")
-#fancyRpartPlot(dec)
+fancyRpartPlot(dec)
+```
+
+```
+## Warning: labs do not fit even at cex 0.15, there may be some overplotting
+```
+
+![](PML_files/figure-html/train rpart-1.png)<!-- -->
+
+```r
 my_testpp= predict(dec, newdata = my_test, type="class")
 confusionMatrix(my_test$classe, my_testpp)
 ```

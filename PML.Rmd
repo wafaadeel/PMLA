@@ -115,7 +115,7 @@ confusionMatrix(my_test$classe, my_testp)
 We now use rpart to train the same dataset and check its accuracy by drawing up a confusion matrix. We also print a decision tree using rattle.
 ```{r train rpart}
 dec=rpart(classe~., data=train, method="class")
-#fancyRpartPlot(dec)
+fancyRpartPlot(dec)
 my_testpp= predict(dec, newdata = my_test, type="class")
 confusionMatrix(my_test$classe, my_testpp)
 ```
